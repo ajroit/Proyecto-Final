@@ -1,94 +1,132 @@
-from flask import Flask ,jsonify ,request
-# del modulo flask importar la clase Flask y los métodos jsonify,request
-from flask_cors import CORS       # del modulo flask_cors importar CORS
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-app=Flask(__name__)  # crear el objeto app de la clase Flask
-CORS(app) #modulo cors es para que me permita acceder desde el frontend al backend
 
-# configuro la base de datos, con el nombre el usuario y la clave
-app.config['SQLALCHEMY_DATABASE_URI']='mysql+pymysql://root:Oracle_4@localhost/proyecto'
-# URI de la BBDD                          driver de la BD  user:clave@URLBBDD/nombreBBDD
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False #none
-db= SQLAlchemy(app)   #crea el objeto db de la clase SQLAlquemy
-ma=Marshmallow(app)   #crea el objeto ma de de la clase Marshmallow
+app = Flask(__name__)
+CORS(app)
 
-# defino la tabla
-class Producto(db.Model):   # la clase Producto hereda de db.Model    
-    id=db.Column(db.Integer, primary_key=True)   #define los campos de la tabla
-    nombre=db.Column(db.String(100))
-    precio=db.Column(db.Integer)
-    stock=db.Column(db.Integer)
-    imagen=db.Column(db.String(400))
-    def __init__(self,nombre,precio,stock,imagen):   #crea el  constructor de la clase
-        self.nombre=nombre   # no hace falta el id porque lo crea sola mysql por ser auto_incremento
-        self.precio=precio
-        self.stock=stock
-        self.imagen=imagen
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://aroitman:codoacodoSQL@aroitman.mysql.pythonanywhere-services.com/aroitman$cac_proyectofinal'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+db = SQLAlchemy(app)
+ma = Marshmallow(app)
 
-    #  si hay que crear mas tablas , se hace aqui
+class Expediente(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    caratula = db.Column(db.String(400))
+    numero_expediente = db.Column(db.String(100))
+    juzgado = db.Column(db.String(400))
+    estado_actual = db.Column(db.String(100))
 
+    def __init__(self, caratula, numero_expediente, juzgado, estado_actual):
+        self.caratula = caratula
+        self.numero_expediente = numero_expediente
+        self.juzgado = juzgado
+        self.estado_actual = estado_actual
 
 with app.app_context():
     db.create_all()  # aqui crea todas las tablas
-#  ************************************************************
-class ProductoSchema(ma.Schema):
+
+class ExpedienteSchema(ma.Schema):
     class Meta:
-        fields=('id','nombre','precio','stock','imagen')
+        fields = ('id', 'caratula', 'numero_expediente', 'juzgado', 'estado_actual')
+
+expediente_schema = ExpedienteSchema()
+expedientes_schema = ExpedienteSchema(many=True)
 
 
-producto_schema=ProductoSchema()            # El objeto producto_schema es para traer un producto
-productos_schema=ProductoSchema(many=True)  # El objeto productos_schema es para traer multiples registros de producto
+@app.route('/expedientes/ordenar/id', methods=['GET'])
+def ordenar_por_id():
+    expedientes_ordenados = Expediente.query.order_by(-Expediente.id).all()  # Orden descendente por ID
+    result = expedientes_schema.dump(expedientes_ordenados)
+    return jsonify(result)
 
+@app.route('/expedientes', methods=['GET'])
+def get_expedientes():
+    all_expedientes = Expediente.query.order_by(Expediente.estado_actual).all()
+    result = expedientes_schema.dump(all_expedientes)
+    return jsonify(result)
 
-# crea los endpoint o rutas (json)
-@app.route('/productos',methods=['GET'])
-def get_Productos():
-    all_productos=Producto.query.all()         # el metodo query.all() lo hereda de db.Model
-    result=productos_schema.dump(all_productos)  # el metodo dump() lo hereda de ma.schema y
-                                                 # trae todos los registros de la tabla
-    return jsonify(result)                       # retorna un JSON de todos los registros de la tabla
+@app.route('/expedientes/<id>', methods=['GET'])
+def get_expediente(id):
+    expediente = Expediente.query.get(id)
+    return expediente_schema.jsonify(expediente)
 
-
-@app.route('/productos/<id>',methods=['GET'])
-def get_producto(id):
-    producto=Producto.query.get(id)
-    return producto_schema.jsonify(producto)   # retorna el JSON de un producto recibido como parametro
-
-
-@app.route('/productos/<id>',methods=['DELETE'])
-def delete_producto(id):
-    producto=Producto.query.get(id)
-    db.session.delete(producto)
+@app.route('/expedientes/<id>', methods=['DELETE'])
+def delete_expediente(id):
+    expediente = Expediente.query.get(id)
+    db.session.delete(expediente)
     db.session.commit()
-    return producto_schema.jsonify(producto)   # me devuelve un json con el registro eliminado
+    return expediente_schema.jsonify(expediente)
 
-@app.route('/productos', methods=['POST']) # crea ruta o endpoint
-def create_producto():
-    #print(request.json)  # request.json contiene el json que envio el cliente
-    nombre=request.json['nombre']
-    precio=request.json['precio']
-    stock=request.json['stock']
-    imagen=request.json['imagen']
-    new_producto=Producto(nombre,precio,stock,imagen)
-    db.session.add(new_producto)
+@app.route('/expedientes', methods=['POST'])
+def create_expediente():
+    caratula = request.json['caratula']
+    numero_expediente = request.json['numero_expediente']
+    juzgado = request.json['juzgado']
+    estado_actual = request.json['estado_actual']
+    new_expediente = Expediente(caratula, numero_expediente, juzgado, estado_actual)
+    db.session.add(new_expediente)
     db.session.commit()
-    return producto_schema.jsonify(new_producto)
+    return expediente_schema.jsonify(new_expediente)
 
-@app.route('/productos/<id>' ,methods=['PUT'])
-def update_producto(id):
-    producto=Producto.query.get(id)
- 
-    producto.nombre=request.json['nombre']
-    producto.precio=request.json['precio']
-    producto.stock=request.json['stock']
-    producto.imagen=request.json['imagen']
-
+@app.route('/expedientes/<id>', methods=['PUT'])
+def update_expediente(id):
+    expediente = Expediente.query.get(id)
+    expediente.caratula = request.json['caratula']
+    expediente.numero_expediente = request.json['numero_expediente']
+    expediente.juzgado = request.json['juzgado']
+    expediente.estado_actual = request.json['estado_actual']
     db.session.commit()
-    return producto_schema.jsonify(producto)
- 
+    return expediente_schema.jsonify(expediente)
 
-# programa principal *******************************
-if __name__=='__main__':  
-    app.run(debug=True, port=5000)    # ejecuta el servidor Flask en el puerto 5000
+@app.route('/expedientes/buscar', methods=['GET'])
+def buscar_expedientes():
+    palabra_clave = request.args.get('q')  # Obtener la palabra clave de los parámetros de consulta (?q=palabraclave)
+    expedientes_filtrados = Expediente.query.filter(
+        db.or_(
+            Expediente.caratula.like(f"%{palabra_clave}%"),  # Filtrar por el campo caratula
+            Expediente.numero_expediente.like(f"%{palabra_clave}%"),  # Filtrar por el campo numero_expediente
+            Expediente.juzgado.like(f"%{palabra_clave}%"),  # Filtrar por el campo juzgado
+            Expediente.estado_actual.like(f"%{palabra_clave}%")  # Filtrar por el campo estado_actual
+        )
+    ).all()
+    result = expedientes_schema.dump(expedientes_filtrados)
+    return jsonify(result)
+
+@app.route('/expedientes/estado/inicio', methods=['GET'])
+def get_expedientes_inicio():
+    expedientes_inicio = Expediente.query.filter_by(estado_actual='Inicio').all()
+    result = expedientes_schema.dump(expedientes_inicio)
+    return jsonify(result)
+
+@app.route('/expedientes/estado/prueba', methods=['GET'])
+def get_expedientes_prueba():
+    expedientes_prueba = Expediente.query.filter_by(estado_actual='Prueba').all()
+    result = expedientes_schema.dump(expedientes_prueba)
+    return jsonify(result)
+
+@app.route('/expedientes/estado/ejecucion', methods=['GET'])
+def get_expedientes_ejecucion():
+    expedientes_ejecucion = Expediente.query.filter_by(estado_actual='Ejecución').all()
+    result = expedientes_schema.dump(expedientes_ejecucion)
+    return jsonify(result)
+
+@app.route('/expedientes/estado/archivado', methods=['GET'])
+def get_expedientes_archivado():
+    expedientes_archivado = Expediente.query.filter_by(estado_actual='Archivado').all()
+    result = expedientes_schema.dump(expedientes_archivado)
+    return jsonify(result)
+
+
+@app.route('/')
+def hello_world():
+    return 'Hello from Flask!'
+
+
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True, port=5000)

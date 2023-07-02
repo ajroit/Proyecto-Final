@@ -20,16 +20,9 @@
 
       <br>
 
-      <a class="btn btn-primary" href="../templates/expediente_nuevo.html">Nuevo</a>
+      <a class="btn btn-primary" href="../templates/expediente_nuevo.html">Cargar Nuevo Expediente</a>
       <br><br>
-      <!-- <div>
-        <button @click="ordenarPor('id')">Ordenar por ID</button>
-        <button @click="ordenarPor('estado_actual')">Ordenar por Estado</button>
-      </div> -->
-
-      <div v-if="error">
-        <p>Lo sentimos, ha ocurrido un error.</p>
-      </div>
+      
       <div v-else>
         <section v-if="cargando">
           <div class="spinner-border"></div>

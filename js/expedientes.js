@@ -1,4 +1,5 @@
 const { createApp } = Vue;
+
 createApp({
   data() {
     return {
@@ -6,6 +7,7 @@ createApp({
       url: 'https://aroitman.pythonanywhere.com/expedientes',
       error: false,
       cargando: true,
+      palabraClave: "",
       id: 0,
       caratula: "",
       numero_expediente: "",
@@ -18,7 +20,12 @@ createApp({
   methods: {
     fetchData(url) {
       fetch(url)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Error al obtener los datos.");
+          }
+          return response.json();
+        })
         .then(data => {
           this.expedientes = data;
           this.cargando = false;
@@ -76,21 +83,24 @@ createApp({
           alert(err.message);
         });
     },
-    ordenarPor(campo) {
-      // Establece el campo de ordenamiento actual
-      this.campoOrdenamiento = campo;
-
-      // Realiza la solicitud al backend para obtener los registros ordenados por el campo seleccionado
-      let url = this.url;
-      if (campo === "id") {
-        url += "/ordenar/id";
-      } else if (campo === "estado_actual") {
-        url += "/ordenar/estado";
+    buscar() {
+      if (this.palabraClave !== "") {
+        const url = `${this.url}/buscar?q=${this.palabraClave}`;
+        this.fetchData(url);
+      } else {
+        const url = `${this.url}/ordenar/${this.campoOrdenamiento}`;
+        this.fetchData(url);
       }
-      this.fetchData(url);
     }
   },
   created() {
-    this.fetchData(this.url);
+    let url = `${this.url}/ordenar/id`; // Ruta de ordenamiento por ID
+    this.fetchData(url);
   },
+  mounted() {
+    const vm = this;
+    this.$watch('palabraClave', function() {
+      vm.buscar();
+    });
+  }
 }).mount('#app');
